@@ -1,9 +1,10 @@
 
 import { FacialMetrics } from '@/hooks/useFaceAnalysis';
 import { Slider } from '@/components/ui/slider';
-import { Camera, CameraOff } from 'lucide-react';
+import { Camera, CameraOff, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 
 interface FaceAnalysisPanelProps {
   metrics: FacialMetrics;
@@ -67,11 +68,14 @@ export const FaceAnalysisPanel = ({
               <span className="text-sm text-gray-300">Eye Openness</span>
               <span className="text-sm text-[#7CE0C6]">{metrics.eyeOpenness}%</span>
             </div>
-            <Slider value={[metrics.eyeOpenness]} max={100} step={1} disabled />
+            <div className="flex items-center gap-2">
+              <Eye className="text-[#2E9E83]" size={16} />
+              <Progress className="h-2 bg-[#0A1A14]" value={metrics.eyeOpenness} />
+            </div>
           </div>
 
           <div className="bg-[#143024] rounded-md p-2">
-            <div className="text-sm text-gray-300">Emotion</div>
+            <div className="text-sm text-gray-300 mb-1">Emotion</div>
             <div className={`font-medium ${
               metrics.emotion === 'happy' || metrics.emotion === 'relaxed'
                 ? 'text-green-400' 
@@ -80,6 +84,22 @@ export const FaceAnalysisPanel = ({
                   : 'text-[#7CE0C6]'
             }`}>
               {metrics.emotion.charAt(0).toUpperCase() + metrics.emotion.slice(1)}
+            </div>
+            <div className="mt-2 flex gap-1">
+              {['happy', 'neutral', 'sad', 'stressed', 'relaxed'].map(emotion => (
+                <div 
+                  key={emotion}
+                  className={`h-1 flex-1 rounded-full ${
+                    metrics.emotion === emotion 
+                      ? emotion === 'happy' || emotion === 'relaxed'
+                          ? 'bg-green-400'
+                          : emotion === 'stressed' || emotion === 'sad'
+                              ? 'bg-red-400'
+                              : 'bg-[#7CE0C6]'
+                      : 'bg-[#0A1A14]'
+                  }`}
+                ></div>
+              ))}
             </div>
           </div>
         </div>

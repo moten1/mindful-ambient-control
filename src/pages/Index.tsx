@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Volume, Thermometer, Vibrate, Lightbulb, Mic } from 'lucide-react';
+import { Volume, Thermometer, Vibrate, Lightbulb, Mic, Heart } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';

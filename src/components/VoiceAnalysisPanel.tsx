@@ -1,9 +1,11 @@
 
 import { VoiceMetrics } from '@/hooks/useVoiceSensing';
 import { Slider } from '@/components/ui/slider';
-import { Mic, MicOff } from 'lucide-react';
+import { Mic, MicOff, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { useEffect, useState } from 'react';
 
 interface VoiceAnalysisPanelProps {
   metrics: VoiceMetrics;
@@ -20,6 +22,17 @@ export const VoiceAnalysisPanel = ({
   onRequestPermission,
   onToggleListening
 }: VoiceAnalysisPanelProps) => {
+  const [showWave, setShowWave] = useState(false);
+  
+  // Show wave animation when actively listening and volume is above threshold
+  useEffect(() => {
+    if (isListening && metrics.volume > 20) {
+      setShowWave(true);
+    } else {
+      setShowWave(false);
+    }
+  }, [isListening, metrics.volume]);
+
   return (
     <Card className="bg-[#132920] border-[#2E9E83]">
       <CardHeader className="pb-2">
@@ -47,12 +60,25 @@ export const VoiceAnalysisPanel = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          {isListening && showWave && (
+            <div className="vocal-wave mb-2">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          )}
+          
           <div className="space-y-1">
             <div className="flex justify-between">
               <span className="text-sm text-gray-300">Volume</span>
               <span className="text-sm text-[#7CE0C6]">{metrics.volume}%</span>
             </div>
-            <Slider value={[metrics.volume]} max={100} step={1} disabled />
+            <div className="flex items-center gap-2">
+              <Volume2 className="text-[#2E9E83]" size={16} />
+              <Progress className="h-2 bg-[#0A1A14]" value={metrics.volume} />
+            </div>
           </div>
 
           <div className="space-y-1">
