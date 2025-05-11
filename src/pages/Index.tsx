@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Volume, Thermometer, Vibrate, Lightbulb, Mic, Heart, Brain } from 'lucide-react';
+import { Volume, Thermometer, Vibrate, Lightbulb, Mic, Heart, Brain, BookOpen } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import useVoiceSensing from '@/hooks/useVoiceSensing';
 import useFaceAnalysis from '@/hooks/useFaceAnalysis';
 import useWearableDevice from '@/hooks/useWearableDevice';
@@ -10,7 +11,11 @@ import VoiceAnalysisPanel from '@/components/VoiceAnalysisPanel';
 import FaceAnalysisPanel from '@/components/FaceAnalysisPanel';
 import WearableDevicePanel from '@/components/WearableDevicePanel';
 import AIInsightsPanel from '@/components/AIInsightsPanel';
+import MeditationPlayer from '@/components/MeditationPlayer';
+import MeditationSelector from '@/components/MeditationSelector';
 import { generateEnvironmentSettings, generateInsights, generateSessionRecommendation } from '@/utils/aiEngine';
+import { meditationScripts, getRecommendedMeditation } from '@/data/meditationScripts';
+import { MeditationScript } from '@/types/meditation';
 
 const Index = () => {
   const [soundLevel, setSoundLevel] = useState<number[]>([50]);
@@ -27,6 +32,10 @@ const Index = () => {
   const [insights, setInsights] = useState<{message: string; type: 'info' | 'suggestion' | 'alert'}[]>([]);
   const [sessionRecommendation, setSessionRecommendation] = useState('');
   const [aiUpdateInterval, setAiUpdateInterval] = useState<number | null>(null);
+  const [showMeditationSelector, setShowMeditationSelector] = useState(false);
+  const [showMeditationPlayer, setShowMeditationPlayer] = useState(false);
+  const [currentMeditation, setCurrentMeditation] = useState<MeditationScript | null>(null);
+  const [recommendedMeditation, setRecommendedMeditation] = useState<MeditationScript | null>(null);
 
   // Initialize hooks for sensor data
   const voice = useVoiceSensing(isRecording);
@@ -120,6 +129,34 @@ const Index = () => {
     }
   };
 
+  // Handle opening the meditation selector
+  const handleOpenMeditationSelector = () => {
+    setShowMeditationSelector(true);
+  };
+
+  // Handle selecting a meditation
+  const handleSelectMeditation = (meditation: MeditationScript) => {
+    setCurrentMeditation(meditation);
+    setShowMeditationSelector(false);
+    setShowMeditationPlayer(true);
+  };
+
+  // Handle meditation completion
+  const handleMeditationComplete = () => {
+    toast({
+      title: "Meditation Complete",
+      description: "Your guided meditation session has ended",
+    });
+    setCurrentMeditation(null);
+    setShowMeditationPlayer(false);
+  };
+
+  // Handle closing meditation player
+  const handleCloseMeditationPlayer = () => {
+    setShowMeditationPlayer(false);
+    setCurrentMeditation(null);
+  };
+
   // Update AI insights based on current sensor data
   const updateAIInsights = () => {
     // Create sensor data object
@@ -151,6 +188,15 @@ const Index = () => {
     // Generate session recommendation
     const recommendation = generateSessionRecommendation(sensorData);
     setSessionRecommendation(recommendation);
+    
+    // Generate meditation recommendation
+    const meditationRec = getRecommendedMeditation({
+      heartRate: wearable.metrics.heartRate,
+      emotion: face.metrics.emotion,
+      energyLevel: wearable.metrics.energyLevel,
+      attentionLevel: face.metrics.attentionLevel
+    });
+    setRecommendedMeditation(meditationRec);
     
     // Apply settings if AI adaptation is enabled
     if (aiAdaptationEnabled && sessionActive) {
@@ -274,13 +320,21 @@ const Index = () => {
       </div>
       
       {/* Control Buttons Row */}
-      <div className="flex gap-4 items-center mt-8 mb-4">
+      <div className="flex flex-wrap gap-4 items-center mt-8 mb-4 justify-center">
         {/* Microphone Button */}
         <div 
           onClick={toggleMicrophone}
           className={`rounded-full p-6 cursor-pointer ${isRecording ? 'bg-[#2E9E83]/50 mic-pulse' : 'border-2 border-[#2E9E83]'}`}
         >
           <Mic size={32} className={`${isRecording ? 'text-[#7CE0C6]' : 'text-[#2E9E83]'}`} />
+        </div>
+        
+        {/* Meditation Button */}
+        <div 
+          onClick={handleOpenMeditationSelector}
+          className="rounded-full p-6 cursor-pointer border-2 border-[#2E9E83]"
+        >
+          <BookOpen size={32} className="text-[#2E9E83]" />
         </div>
         
         {/* Analysis Panel Toggle */}
@@ -342,6 +396,8 @@ const Index = () => {
             sessionRecommendation={sessionRecommendation}
             onApplyRecommendation={applyRecommendedSettings}
             isActive={aiAdaptationEnabled}
+            recommendedMeditation={recommendedMeditation || undefined}
+            onStartMeditation={handleSelectMeditation}
           />
         </div>
       )}
@@ -438,6 +494,30 @@ const Index = () => {
           />
         </div>
       </div>
+      
+      {/* Meditation Selector Dialog */}
+      <Dialog open={showMeditationSelector} onOpenChange={setShowMeditationSelector}>
+        <DialogContent className="bg-[#0A1A14] border-[#2E9E83] text-white max-w-2xl">
+          <MeditationSelector 
+            meditations={meditationScripts}
+            onSelectMeditation={handleSelectMeditation}
+            recommendedMeditation={recommendedMeditation || undefined}
+          />
+        </DialogContent>
+      </Dialog>
+      
+      {/* Meditation Player Dialog */}
+      <Dialog open={showMeditationPlayer} onOpenChange={setShowMeditationPlayer}>
+        <DialogContent className="bg-[#0A1A14] border-[#2E9E83] text-white p-0 max-w-3xl">
+          {currentMeditation && (
+            <MeditationPlayer 
+              meditation={currentMeditation}
+              onComplete={handleMeditationComplete}
+              onClose={handleCloseMeditationPlayer}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
