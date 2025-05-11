@@ -164,3 +164,68 @@ body {
   background-size: 200% 100%;
   animation: scanning 2s infinite linear;
 }
+
+/* AI Functionality animations */
+@keyframes brainpulse {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scale(0.95);
+  }
+}
+
+.brain-pulse {
+  animation: brainpulse 2s infinite;
+}
+
+/* AI Insight highlight animations */
+@keyframes insight-highlight {
+  0% {
+    background-color: rgba(46, 158, 131, 0.2);
+  }
+  50% {
+    background-color: rgba(46, 158, 131, 0.4);
+  }
+  100% {
+    background-color: rgba(46, 158, 131, 0.2);
+  }
+}
+
+.insight-highlight {
+  animation: insight-highlight 3s infinite;
+}
+
+/* Neural network visualization effect */
+.neural-connections {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, #2E9E83 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0.1;
+}
+
+@keyframes neural-pulse {
+  0% {
+    background-size: 18px 18px;
+    opacity: 0.05;
+  }
+  50% {
+    background-size: 22px 22px;
+    opacity: 0.15;
+  }
+  100% {
+    background-size: 18px 18px;
+    opacity: 0.05;
+  }
+}
+
+.neural-active {
+  animation: neural-pulse 8s infinite;
+}

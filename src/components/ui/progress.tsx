@@ -19,9 +19,12 @@ const Progress = React.forwardRef<
     {...props}
   >
     <ProgressPrimitive.Indicator
-      className="h-full w-full flex-1 bg-[#2E9E83] transition-all"
+      className="h-full w-full flex-1 bg-[#2E9E83] transition-all relative"
       style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
-    />
+    >
+      {/* Add a subtle gradient effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#7CE0C6]/20 to-transparent scanning-effect"></div>
+    </ProgressPrimitive.Indicator>
   </ProgressPrimitive.Root>
 ))
 Progress.displayName = ProgressPrimitive.Root.displayName
