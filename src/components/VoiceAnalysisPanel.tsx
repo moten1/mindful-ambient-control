@@ -23,13 +23,25 @@ export const VoiceAnalysisPanel = ({
   onToggleListening
 }: VoiceAnalysisPanelProps) => {
   const [showWave, setShowWave] = useState(false);
+  const [volumeClass, setVolumeClass] = useState('bg-[#0A1A14]');
   
   // Show wave animation when actively listening and volume is above threshold
   useEffect(() => {
-    if (isListening && metrics.volume > 20) {
+    if (isListening && metrics.volume > 15) {
       setShowWave(true);
     } else {
       setShowWave(false);
+    }
+    
+    // Set volume bar color based on level
+    if (metrics.volume > 80) {
+      setVolumeClass('bg-red-500');
+    } else if (metrics.volume > 50) {
+      setVolumeClass('bg-yellow-500');
+    } else if (metrics.volume > 20) {
+      setVolumeClass('bg-green-500');
+    } else {
+      setVolumeClass('bg-[#0A1A14]');
     }
   }, [isListening, metrics.volume]);
 
@@ -73,11 +85,16 @@ export const VoiceAnalysisPanel = ({
           <div className="space-y-1">
             <div className="flex justify-between">
               <span className="text-sm text-gray-300">Volume</span>
-              <span className="text-sm text-[#7CE0C6]">{metrics.volume}%</span>
+              <span className={`text-sm ${metrics.volume > 50 ? 'text-yellow-400' : 'text-[#7CE0C6]'}`}>
+                {metrics.volume}%
+              </span>
             </div>
             <div className="flex items-center gap-2">
-              <Volume2 className="text-[#2E9E83]" size={16} />
-              <Progress className="h-2 bg-[#0A1A14]" value={metrics.volume} />
+              <Volume2 className={metrics.volume > 20 ? 'text-[#7CE0C6]' : 'text-[#2E9E83]'} size={16} />
+              <Progress 
+                className={`h-2 transition-all duration-300 ${volumeClass}`} 
+                value={metrics.volume} 
+              />
             </div>
           </div>
 

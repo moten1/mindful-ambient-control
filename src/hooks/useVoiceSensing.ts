@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/hooks/use-toast';
 
@@ -11,7 +10,7 @@ export type VoiceMetrics = {
 
 export const useVoiceSensing = (isActive: boolean) => {
   const [metrics, setMetrics] = useState<VoiceMetrics>({
-    volume: 50,
+    volume: 0,
     tone: 'neutral',
     clarity: 75,
     breathing: 'normal',
@@ -25,6 +24,8 @@ export const useVoiceSensing = (isActive: boolean) => {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const dataArrayRef = useRef<Uint8Array | null>(null);
+  const volumeHistoryRef = useRef<number[]>([]);
   
   // Request microphone permissions
   const requestPermission = async () => {
@@ -40,9 +41,19 @@ export const useVoiceSensing = (isActive: boolean) => {
           analyserRef.current = audioContextRef.current.createAnalyser();
           analyserRef.current.fftSize = 2048;
           
+          // Create the data array for audio analysis
+          dataArrayRef.current = new Uint8Array(analyserRef.current.frequencyBinCount);
+          
           const source = audioContextRef.current.createMediaStreamSource(stream);
           source.connect(analyserRef.current);
+          
+          console.log("Audio context successfully initialized");
         }
+        
+        toast({
+          title: "Microphone Access Granted",
+          description: "You can now use voice sensing features",
+        });
         
         return true;
       } else {
@@ -55,6 +66,7 @@ export const useVoiceSensing = (isActive: boolean) => {
         return false;
       }
     } catch (err) {
+      console.error("Microphone permission error:", err);
       setError('Permission denied for audio capture');
       toast({
         title: "Permission Denied",
@@ -68,11 +80,13 @@ export const useVoiceSensing = (isActive: boolean) => {
   // Start voice analysis
   const startListening = () => {
     if (!isPermissionGranted || !analyserRef.current) {
+      console.log("Cannot start listening, permission not granted or analyser not initialized");
       return false;
     }
     
     setIsListening(true);
     analyzeAudio();
+    console.log("Started listening to microphone");
     return true;
   };
   
@@ -82,48 +96,110 @@ export const useVoiceSensing = (isActive: boolean) => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
+      console.log("Stopped listening to microphone");
     }
+  };
+  
+  // Calculate the volume level from raw audio data
+  const calculateVolume = (dataArray: Uint8Array): number => {
+    const sum = dataArray.reduce((acc, val) => acc + val, 0);
+    const average = sum / dataArray.length;
+    // Scale to 0-100 range
+    return Math.min(100, Math.max(0, average * 2));
+  };
+  
+  // Analyze breath patterns based on volume history
+  const analyzeBreathing = (volumeHistory: number[]): VoiceMetrics['breathing'] => {
+    if (volumeHistory.length < 10) return 'normal';
+    
+    // Calculate variations in volume
+    let variations = 0;
+    for (let i = 1; i < volumeHistory.length; i++) {
+      variations += Math.abs(volumeHistory[i] - volumeHistory[i - 1]);
+    }
+    
+    const avgVariation = variations / volumeHistory.length;
+    
+    if (avgVariation < 2) return 'deep';
+    if (avgVariation > 8) return 'shallow';
+    return 'normal';
+  };
+  
+  // Analyze tone based on frequency distribution
+  const analyzeTone = (dataArray: Uint8Array): VoiceMetrics['tone'] => {
+    // Split the frequency spectrum into low, mid, high ranges
+    const lowFreqEnd = Math.floor(dataArray.length / 4);
+    const highFreqStart = Math.floor(dataArray.length * 3 / 4);
+    
+    const lowFreqSum = dataArray.slice(0, lowFreqEnd).reduce((acc, val) => acc + val, 0);
+    const highFreqSum = dataArray.slice(highFreqStart).reduce((acc, val) => acc + val, 0);
+    
+    // Detect tone based on frequency distribution
+    if (lowFreqSum > highFreqSum * 1.5) return 'calm';
+    if (highFreqSum > lowFreqSum * 1.2) return 'stressed';
+    return 'neutral';
+  };
+  
+  // Calculate clarity based on signal-to-noise ratio
+  const calculateClarity = (dataArray: Uint8Array): number => {
+    const sumTotal = dataArray.reduce((acc, val) => acc + val, 0);
+    if (sumTotal === 0) return 50; // Default when no sound
+    
+    // Calculate noise level (higher frequencies often contain more noise)
+    const highFreqStart = Math.floor(dataArray.length * 3 / 4);
+    const noiseLevel = dataArray.slice(highFreqStart).reduce((acc, val) => acc + val, 0) / (dataArray.length / 4);
+    const signalLevel = sumTotal / dataArray.length;
+    
+    // Calculate signal-to-noise ratio (simplified)
+    const snr = signalLevel > 0 ? signalLevel / (noiseLevel + 1) : 0;
+    
+    // Scale SNR to clarity percentage (0-100)
+    return Math.min(95, Math.max(20, 40 + snr * 30));
   };
   
   // Analyze audio data
   const analyzeAudio = () => {
-    if (!isListening || !analyserRef.current) return;
+    if (!isListening || !analyserRef.current || !dataArrayRef.current) return;
     
     const analyser = analyserRef.current;
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const dataArray = dataArrayRef.current;
+    
+    // Get frequency data
     analyser.getByteFrequencyData(dataArray);
     
-    // Simple volume calculation based on frequency data
-    const sum = dataArray.reduce((acc, val) => acc + val, 0);
-    const average = sum / dataArray.length;
-    const volumeLevel = Math.min(100, Math.max(0, average * 2)); // Scale to 0-100
+    // Calculate volume
+    const volumeLevel = calculateVolume(dataArray);
     
-    // Simulate tone analysis based on frequency pattern
-    // In a real app, this would use more sophisticated algorithms
-    const lowFreqSum = dataArray.slice(0, dataArray.length / 3).reduce((acc, val) => acc + val, 0);
-    const highFreqSum = dataArray.slice(dataArray.length * 2 / 3).reduce((acc, val) => acc + val, 0);
-    const midFreqSum = sum - lowFreqSum - highFreqSum;
+    // Add to volume history (keep last 20 samples)
+    volumeHistoryRef.current.push(volumeLevel);
+    if (volumeHistoryRef.current.length > 20) {
+      volumeHistoryRef.current.shift();
+    }
     
-    let tone: VoiceMetrics['tone'] = 'neutral';
-    if (lowFreqSum > highFreqSum * 1.5) tone = 'calm';
-    else if (highFreqSum > lowFreqSum * 1.2) tone = 'stressed';
-    
-    // Calculate clarity based on signal-to-noise ratio (simplified)
-    const clarityLevel = Math.min(95, Math.max(20, 60 + (midFreqSum / sum) * 40));
-    
-    // Simulate breathing pattern detection based on volume variations
-    // In a real app, this would analyze amplitude patterns over time
-    let breathing: VoiceMetrics['breathing'] = 'normal';
-    const variability = Math.random() * 10; // Simulated for demo purposes
-    if (variability < 3) breathing = 'deep';
-    else if (variability > 7) breathing = 'shallow';
-    
-    setMetrics({
-      volume: volumeLevel,
-      tone,
-      clarity: clarityLevel,
-      breathing,
-    });
+    // Only update other metrics if we detect sound
+    if (volumeLevel > 5) {
+      // Analyze tone based on frequency distribution
+      const tone = analyzeTone(dataArray);
+      
+      // Calculate clarity based on frequency characteristics
+      const clarityLevel = calculateClarity(dataArray);
+      
+      // Analyze breathing pattern based on volume history
+      const breathing = analyzeBreathing(volumeHistoryRef.current);
+      
+      setMetrics({
+        volume: volumeLevel,
+        tone,
+        clarity: clarityLevel,
+        breathing,
+      });
+    } else {
+      // When no significant sound, only update volume
+      setMetrics(prev => ({
+        ...prev,
+        volume: volumeLevel,
+      }));
+    }
     
     animationFrameRef.current = requestAnimationFrame(analyzeAudio);
   };
