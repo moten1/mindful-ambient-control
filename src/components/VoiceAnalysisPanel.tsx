@@ -5,7 +5,7 @@ import { Mic, MicOff, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface VoiceAnalysisPanelProps {
   metrics: VoiceMetrics;
@@ -24,6 +24,8 @@ export const VoiceAnalysisPanel = ({
 }: VoiceAnalysisPanelProps) => {
   const [showWave, setShowWave] = useState(false);
   const [volumeClass, setVolumeClass] = useState('bg-[#0A1A14]');
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const audioVisualizerRef = useRef<number | null>(null);
   
   // Show wave animation when actively listening and volume is above threshold
   useEffect(() => {
@@ -44,6 +46,71 @@ export const VoiceAnalysisPanel = ({
       setVolumeClass('bg-[#0A1A14]');
     }
   }, [isListening, metrics.volume]);
+
+  // Sound wave visualization effect
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !isListening) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Create visualizer function
+    const visualize = () => {
+      ctx.clearRect(0, 0, width, height);
+      
+      // Base the wave height on the current volume
+      const waveHeight = Math.max(5, (metrics.volume / 100) * (height * 0.8));
+      
+      ctx.beginPath();
+      ctx.moveTo(0, height / 2);
+      
+      // Draw a wavy line based on voice metrics
+      for (let x = 0; x < width; x++) {
+        // Create a sine wave that's influenced by volume
+        const frequency = 0.02 + (metrics.clarity / 1000);
+        const amplitude = waveHeight * (metrics.volume > 10 ? 1 : 0.2);
+        
+        // Make the wave more chaotic when tone is stressed
+        const chaosFactorForTone = metrics.tone === 'stressed' ? 0.3 : 
+                                 metrics.tone === 'calm' ? 0.05 : 0.15;
+        
+        const randomFactor = Math.random() * chaosFactorForTone * amplitude;
+        
+        // Combine regular sine wave with randomness for natural voice effect
+        const y = (height / 2) + 
+                  Math.sin(x * frequency) * amplitude + 
+                  Math.sin(x * frequency * 1.5) * (amplitude * 0.3) +
+                  randomFactor;
+        
+        ctx.lineTo(x, y);
+      }
+      
+      // Finish the path
+      ctx.lineTo(width, height / 2);
+      ctx.strokeStyle = metrics.volume > 50 ? '#7CE0C6' : '#2E9E83';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Request next frame only if still listening
+      if (isListening) {
+        audioVisualizerRef.current = requestAnimationFrame(visualize);
+      }
+    };
+    
+    // Start visualization
+    audioVisualizerRef.current = requestAnimationFrame(visualize);
+    
+    // Cleanup
+    return () => {
+      if (audioVisualizerRef.current) {
+        cancelAnimationFrame(audioVisualizerRef.current);
+      }
+    };
+  }, [isListening, metrics.volume, metrics.clarity, metrics.tone]);
 
   return (
     <Card className="bg-[#132920] border-[#2E9E83]">
@@ -72,6 +139,17 @@ export const VoiceAnalysisPanel = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          {isListening && (
+            <div className="audio-visualizer h-12 mb-2">
+              <canvas 
+                ref={canvasRef} 
+                width={300} 
+                height={48}
+                className="w-full h-full"
+              ></canvas>
+            </div>
+          )}
+          
           {isListening && showWave && (
             <div className="vocal-wave mb-2">
               <span></span>

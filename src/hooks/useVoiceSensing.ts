@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/hooks/use-toast';
 
@@ -6,6 +7,7 @@ export type VoiceMetrics = {
   tone: 'calm' | 'neutral' | 'stressed';
   clarity: number;
   breathing: 'deep' | 'shallow' | 'normal';
+  frequencyData?: Uint8Array;  // Raw frequency data for visualization
 };
 
 export const useVoiceSensing = (isActive: boolean) => {
@@ -31,7 +33,14 @@ export const useVoiceSensing = (isActive: boolean) => {
   const requestPermission = async () => {
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: { 
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          } 
+        });
+        
         setIsPermissionGranted(true);
         mediaStreamRef.current = stream;
         
@@ -40,6 +49,7 @@ export const useVoiceSensing = (isActive: boolean) => {
           audioContextRef.current = new AudioContext();
           analyserRef.current = audioContextRef.current.createAnalyser();
           analyserRef.current.fftSize = 2048;
+          analyserRef.current.smoothingTimeConstant = 0.8;
           
           // Create the data array for audio analysis
           dataArrayRef.current = new Uint8Array(analyserRef.current.frequencyBinCount);
@@ -84,6 +94,11 @@ export const useVoiceSensing = (isActive: boolean) => {
       return false;
     }
     
+    // Resume AudioContext if it was suspended
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume();
+    }
+    
     setIsListening(true);
     analyzeAudio();
     console.log("Started listening to microphone");
@@ -97,6 +112,11 @@ export const useVoiceSensing = (isActive: boolean) => {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
       console.log("Stopped listening to microphone");
+    }
+    
+    // Optionally suspend AudioContext to save resources
+    if (audioContextRef.current && audioContextRef.current.state === 'running') {
+      audioContextRef.current.suspend();
     }
   };
   
@@ -187,17 +207,22 @@ export const useVoiceSensing = (isActive: boolean) => {
       // Analyze breathing pattern based on volume history
       const breathing = analyzeBreathing(volumeHistoryRef.current);
       
+      // Create a copy of the frequency data for visualization purposes
+      const frequencyData = new Uint8Array(dataArray);
+      
       setMetrics({
         volume: volumeLevel,
         tone,
         clarity: clarityLevel,
         breathing,
+        frequencyData
       });
     } else {
       // When no significant sound, only update volume
       setMetrics(prev => ({
         ...prev,
         volume: volumeLevel,
+        frequencyData: new Uint8Array(dataArray)
       }));
     }
     
