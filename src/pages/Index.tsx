@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Volume, Thermometer, Vibrate, Lightbulb, Mic, Heart, Brain, BookOpen } from 'lucide-react';
+import { Volume, Thermometer, Vibrate, Lightbulb, Mic, Heart, Brain, BookOpen, Settings } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
@@ -16,6 +16,8 @@ import MeditationSelector from '@/components/MeditationSelector';
 import { generateEnvironmentSettings, generateInsights, generateSessionRecommendation } from '@/utils/aiEngine';
 import { meditationScripts, getRecommendedMeditation } from '@/data/meditationScripts';
 import { MeditationScript } from '@/types/meditation';
+import { useSettings } from '@/contexts/SettingsContext';
+import SettingsPanel from '@/components/SettingsPanel';
 
 const Index = () => {
   const [soundLevel, setSoundLevel] = useState<number[]>([50]);
@@ -36,6 +38,8 @@ const Index = () => {
   const [showMeditationPlayer, setShowMeditationPlayer] = useState(false);
   const [currentMeditation, setCurrentMeditation] = useState<MeditationScript | null>(null);
   const [recommendedMeditation, setRecommendedMeditation] = useState<MeditationScript | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const { elevenLabsApiKey } = useSettings();
 
   // Initialize hooks for sensor data
   const voice = useVoiceSensing(isRecording);
@@ -275,9 +279,21 @@ const Index = () => {
     };
   }, [aiUpdateInterval]);
 
+  // Toggle settings panel
+  const toggleSettingsPanel = () => {
+    setShowSettings(!showSettings);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0A1A14] to-[#132920] text-white flex flex-col items-center justify-between py-8 px-4">
-      <div className="text-center">
+      <div className="text-center relative w-full">
+        <button
+          onClick={toggleSettingsPanel}
+          className="absolute right-4 top-0 p-2 rounded-full bg-[#143024] border border-[#2E9E83] hover:bg-[#1d4230]"
+          title="Settings"
+        >
+          <Settings size={20} className="text-[#7CE0C6]" />
+        </button>
         <h1 className="text-[#7CE0C6] text-xl mb-2">Inner Current</h1>
         <h2 className="text-4xl md:text-5xl font-light mb-8 max-w-3xl">
           Begin an AI-assisted<br />energy recalibration session
@@ -516,6 +532,13 @@ const Index = () => {
               onClose={handleCloseMeditationPlayer}
             />
           )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Settings Dialog */}
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="bg-[#0A1A14] border-[#2E9E83] text-white p-0">
+          <SettingsPanel onClose={() => setShowSettings(false)} />
         </DialogContent>
       </Dialog>
     </div>
