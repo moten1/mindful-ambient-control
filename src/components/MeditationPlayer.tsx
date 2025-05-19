@@ -1,157 +1,220 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Pause, Play, Book, Timer } from 'lucide-react';
-import { MeditationScript } from '@/types/meditation';
+import { Pause, Play, Stop, Timer } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface MeditationPlayerProps {
-  meditation: MeditationScript;
+  title: string;
+  description: string;
+  audioSrc: string;
+  duration: number; // in seconds
   onComplete?: () => void;
-  onClose: () => void;
 }
 
 const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
-  meditation,
-  onComplete,
-  onClose
+  title,
+  description,
+  audioSrc,
+  duration = 600, // default 10 minutes
+  onComplete
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentScriptIndex, setCurrentScriptIndex] = useState(0);
-  const [timer, setTimer] = useState(meditation.duration);
-  const [intervalId, setIntervalId] = useState<number | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(duration);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const intervalRef = useRef<number | null>(null);
 
-  // Calculate time for each script segment
-  const segmentTime = Math.floor(meditation.duration / meditation.script.length);
-  
+  // Initialize audio element
   useEffect(() => {
+    audioRef.current = new Audio(audioSrc);
+    
+    // Set up event listeners
+    if (audioRef.current) {
+      audioRef.current.addEventListener('ended', handleEnd);
+      audioRef.current.addEventListener('error', handleError);
+    }
+    
+    // Cleanup
     return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.removeEventListener('ended', handleEnd);
+        audioRef.current.removeEventListener('error', handleError);
       }
     };
-  }, [intervalId]);
+  }, [audioSrc]);
 
+  // Handle play/pause
   const togglePlayPause = () => {
     if (isPlaying) {
-      // Pause
-      if (intervalId) {
-        clearInterval(intervalId);
-        setIntervalId(null);
-      }
-      setIsPlaying(false);
+      pauseSession();
     } else {
-      // Play
-      const id = window.setInterval(() => {
-        setTimer(prev => {
-          if (prev <= 1) {
-            clearInterval(id);
-            setIsPlaying(false);
-            if (onComplete) {
-              onComplete();
-            }
-            return 0;
-          }
-          
-          // Calculate which script segment to show based on remaining time
-          const newIndex = meditation.script.length - 
-            Math.ceil((prev - 1) / segmentTime);
-          
-          if (newIndex !== currentScriptIndex && newIndex < meditation.script.length) {
-            setCurrentScriptIndex(newIndex);
-          }
-          
-          return prev - 1;
-        });
-      }, 1000);
-      
-      setIntervalId(id);
-      setIsPlaying(true);
+      startSession();
     }
   };
 
+  // Start session
+  const startSession = () => {
+    if (audioRef.current) {
+      audioRef.current.play().catch(handleError);
+      setIsPlaying(true);
+      
+      // Start timer
+      if (intervalRef.current === null) {
+        intervalRef.current = window.setInterval(() => {
+          setCurrentTime(prev => {
+            const newTime = prev + 1;
+            setTimeRemaining(duration - newTime);
+            
+            // End session if time is up
+            if (newTime >= duration) {
+              handleEnd();
+              return duration;
+            }
+            
+            return newTime;
+          });
+        }, 1000);
+      }
+      
+      toast({
+        title: "Session started",
+        description: "Your meditation session has begun",
+      });
+    }
+  };
+
+  // Pause session
+  const pauseSession = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+      
+      // Pause timer
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      
+      toast({
+        title: "Session paused",
+        description: "Your meditation session is paused",
+      });
+    }
+  };
+
+  // Stop session
+  const stopSession = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setTimeRemaining(duration);
+      
+      // Stop timer
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      
+      toast({
+        title: "Session ended",
+        description: "Your meditation session has ended",
+      });
+    }
+  };
+
+  // Handle session end
+  const handleEnd = () => {
+    stopSession();
+    if (onComplete) {
+      onComplete();
+    }
+  };
+
+  // Handle audio errors
+  const handleError = (error: any) => {
+    console.error("Audio playback error:", error);
+    toast({
+      title: "Playback Error",
+      description: "There was an error playing the meditation audio",
+      variant: "destructive",
+    });
+    stopSession();
+  };
+
+  // Format time as MM:SS
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Calculate progress percentage
+  const progressPercentage = (currentTime / duration) * 100;
+
   return (
     <Card className="bg-[#132920] border-[#2E9E83] w-full max-w-3xl mx-auto">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-[#7CE0C6] text-lg">{meditation.title}</CardTitle>
+          <CardTitle className="text-[#7CE0C6] text-lg">{title}</CardTitle>
           <Badge variant="outline" className="bg-[#2E9E83]/20 text-[#7CE0C6] border-[#2E9E83]">
-            {meditation.energyType}
+            Free Session
           </Badge>
         </div>
-        <p className="text-gray-300 text-sm">{meditation.description}</p>
+        <p className="text-gray-300 text-sm">{description}</p>
       </CardHeader>
       
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Book className="text-[#7CE0C6]" size={16} />
-            <span className="text-gray-300 text-sm">Guided Meditation</span>
-          </div>
-          <div className="flex items-center gap-2">
             <Timer className="text-[#7CE0C6]" size={16} />
-            <span className="text-gray-300 text-sm">{formatTime(meditation.duration)}</span>
+            <span className="text-gray-300 text-sm">{formatTime(duration)} Session</span>
           </div>
         </div>
         
         <Progress 
           className="h-2 bg-[#0A1A14]" 
-          value={((meditation.duration - timer) / meditation.duration) * 100} 
+          value={progressPercentage} 
         />
         
-        <div className="bg-[#0A1A14] p-4 rounded-md min-h-[120px] flex items-center">
-          <p className="text-gray-100 text-center w-full">
-            {meditation.script[currentScriptIndex]}
+        <div className="bg-[#0A1A14] p-6 rounded-md min-h-[120px] flex items-center justify-center">
+          <p className="text-5xl font-light text-[#7CE0C6]">
+            {formatTime(timeRemaining)}
           </p>
-        </div>
-        
-        <div className="flex gap-2">
-          {meditation.recommendedFor.map((tag) => (
-            <Badge key={tag} variant="secondary" className="bg-[#1d4230] text-[#7CE0C6] border-none">
-              {tag}
-            </Badge>
-          ))}
         </div>
       </CardContent>
       
-      <CardFooter className="flex justify-between items-center">
-        <div>
-          <span className="text-[#7CE0C6] text-lg">{formatTime(timer)}</span>
-          <span className="text-gray-400 text-sm ml-2">remaining</span>
-        </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            className="border-[#2E9E83] text-gray-300"
-            onClick={onClose}
-          >
-            Close
-          </Button>
-          <Button
-            onClick={togglePlayPause}
-            className={isPlaying ? "bg-[#39BF9D]" : "bg-[#2E9E83]"}
-          >
-            {isPlaying ? (
-              <>
-                <Pause className="mr-2" size={16} />
-                Pause
-              </>
-            ) : (
-              <>
-                <Play className="mr-2" size={16} />
-                {timer < meditation.duration ? 'Resume' : 'Begin'}
-              </>
-            )}
-          </Button>
-        </div>
+      <CardFooter className="flex justify-center gap-4 py-6">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-14 w-14 rounded-full border-[#2E9E83] text-[#7CE0C6] hover:bg-[#1d4230] hover:text-white"
+          onClick={stopSession}
+        >
+          <Stop size={24} />
+        </Button>
+        
+        <Button
+          size="icon"
+          className={`h-16 w-16 rounded-full ${isPlaying ? "bg-[#39BF9D]" : "bg-[#2E9E83]"} hover:bg-[#39BF9D]`}
+          onClick={togglePlayPause}
+        >
+          {isPlaying ? (
+            <Pause size={28} />
+          ) : (
+            <Play size={28} />
+          )}
+        </Button>
       </CardFooter>
     </Card>
   );
