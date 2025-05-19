@@ -4,15 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Pause, Play, Stop, Timer } from 'lucide-react';
+import { Pause, Play, Square as Stop, Timer } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { MeditationScript } from '@/types/meditation';
 
 interface MeditationPlayerProps {
-  title: string;
-  description: string;
-  audioSrc: string;
-  duration: number; // in seconds
+  title?: string;
+  description?: string;
+  audioSrc?: string;
+  duration?: number; // in seconds
+  meditation?: MeditationScript;
   onComplete?: () => void;
+  onClose?: () => void;
 }
 
 const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
@@ -20,17 +23,25 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
   description,
   audioSrc,
   duration = 600, // default 10 minutes
-  onComplete
+  meditation,
+  onComplete,
+  onClose
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(duration);
+  const [timeRemaining, setTimeRemaining] = useState(meditation?.duration || duration);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const intervalRef = useRef<number | null>(null);
-
+  
+  // Use meditation properties if provided, otherwise use direct props
+  const meditationTitle = meditation?.title || title || "";
+  const meditationDescription = meditation?.description || description || "";
+  const meditationDuration = meditation?.duration || duration;
+  const meditationAudioSrc = audioSrc || "https://assets.mixkit.co/music/preview/mixkit-meditation-music-577.mp3"; // Default audio
+  
   // Initialize audio element
   useEffect(() => {
-    audioRef.current = new Audio(audioSrc);
+    audioRef.current = new Audio(meditationAudioSrc);
     
     // Set up event listeners
     if (audioRef.current) {
@@ -50,7 +61,7 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
         audioRef.current.removeEventListener('error', handleError);
       }
     };
-  }, [audioSrc]);
+  }, [meditationAudioSrc]);
 
   // Handle play/pause
   const togglePlayPause = () => {
@@ -72,12 +83,12 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
         intervalRef.current = window.setInterval(() => {
           setCurrentTime(prev => {
             const newTime = prev + 1;
-            setTimeRemaining(duration - newTime);
+            setTimeRemaining(meditationDuration - newTime);
             
             // End session if time is up
-            if (newTime >= duration) {
+            if (newTime >= meditationDuration) {
               handleEnd();
-              return duration;
+              return meditationDuration;
             }
             
             return newTime;
@@ -118,7 +129,7 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
       audioRef.current.currentTime = 0;
       setIsPlaying(false);
       setCurrentTime(0);
-      setTimeRemaining(duration);
+      setTimeRemaining(meditationDuration);
       
       // Stop timer
       if (intervalRef.current !== null) {
@@ -160,25 +171,25 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
   };
 
   // Calculate progress percentage
-  const progressPercentage = (currentTime / duration) * 100;
+  const progressPercentage = (currentTime / meditationDuration) * 100;
 
   return (
     <Card className="bg-[#132920] border-[#2E9E83] w-full max-w-3xl mx-auto">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-[#7CE0C6] text-lg">{title}</CardTitle>
+          <CardTitle className="text-[#7CE0C6] text-lg">{meditationTitle}</CardTitle>
           <Badge variant="outline" className="bg-[#2E9E83]/20 text-[#7CE0C6] border-[#2E9E83]">
             Free Session
           </Badge>
         </div>
-        <p className="text-gray-300 text-sm">{description}</p>
+        <p className="text-gray-300 text-sm">{meditationDescription}</p>
       </CardHeader>
       
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Timer className="text-[#7CE0C6]" size={16} />
-            <span className="text-gray-300 text-sm">{formatTime(duration)} Session</span>
+            <span className="text-gray-300 text-sm">{formatTime(meditationDuration)} Session</span>
           </div>
         </div>
         
