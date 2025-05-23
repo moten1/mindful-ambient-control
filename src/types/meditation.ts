@@ -9,7 +9,7 @@ export interface MeditationScript {
   audioSrc?: string; // URL for pre-recorded audio
   videoSrc?: string; // URL for background video
   voiceId?: string;
-  recommendedFor?: {
+  recommendedFor?: string[] | {
     emotion?: string;
     heartRate?: number;
     energyLevel?: number;
