@@ -25,6 +25,14 @@ export const useMeditationPlayer = ({
 
   // Initialize audio element
   useEffect(() => {
+    // Clean up previous audio element if it exists
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeEventListener('ended', handleEnd);
+      audioRef.current.removeEventListener('error', handleError);
+    }
+    
+    // Create new audio element with updated source
     audioRef.current = new Audio(audioSrc);
     
     // Set up event listeners
@@ -32,6 +40,12 @@ export const useMeditationPlayer = ({
       audioRef.current.addEventListener('ended', handleEnd);
       audioRef.current.addEventListener('error', handleError);
       audioRef.current.loop = true; // Loop the audio
+      audioRef.current.muted = muted;
+      
+      // If it was playing before source change, start playing again
+      if (isPlaying) {
+        audioRef.current.play().catch(handleError);
+      }
     }
     
     // Cleanup
@@ -46,7 +60,7 @@ export const useMeditationPlayer = ({
         audioRef.current.removeEventListener('error', handleError);
       }
     };
-  }, [audioSrc]);
+  }, [audioSrc]); // Re-initialize when audio source changes
 
   // Initialize video if available
   useEffect(() => {
@@ -58,6 +72,25 @@ export const useMeditationPlayer = ({
       }
     }
   }, [isPlaying, videoSrc]);
+
+  // Reset video source when it changes
+  useEffect(() => {
+    if (videoRef.current) {
+      // Video source changed, reset video element
+      const wasPlaying = isPlaying;
+      if (wasPlaying) {
+        pauseSession();
+      }
+      
+      // Small timeout to ensure the video element is properly updated
+      setTimeout(() => {
+        if (wasPlaying && videoRef.current && videoSrc) {
+          videoRef.current.play().catch(console.error);
+          startSession();
+        }
+      }, 100);
+    }
+  }, [videoSrc]);
 
   // Toggle mute
   const toggleMute = () => {
@@ -191,6 +224,8 @@ export const useMeditationPlayer = ({
     videoRef,
     toggleMute,
     togglePlayPause,
+    startSession,
+    pauseSession,
     stopSession,
     duration
   };

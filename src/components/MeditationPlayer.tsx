@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { MeditationScript } from '@/types/meditation';
 import MeditationHeader from './meditation/MeditationHeader';
 import MeditationProgress from './meditation/MeditationProgress';
 import MeditationControls from './meditation/MeditationControls';
+import MeditationLinkInput from './meditation/MeditationLinkInput';
 import { useMeditationPlayer } from '@/hooks/useMeditationPlayer';
 
 interface MeditationPlayerProps {
@@ -32,8 +33,27 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
   const meditationTitle = meditation?.title || title || "";
   const meditationDescription = meditation?.description || description || "";
   const meditationDuration = meditation?.duration || duration;
-  const meditationAudioSrc = audioSrc || meditation?.audioSrc || "https://assets.mixkit.co/music/preview/mixkit-meditation-music-577.mp3"; // Default audio
-  const meditationVideoSrc = videoSrc || meditation?.videoSrc;
+  
+  const [customAudioSrc, setCustomAudioSrc] = useState<string | undefined>(undefined);
+  const [customVideoSrc, setCustomVideoSrc] = useState<string | undefined>(undefined);
+  
+  // Use custom sources if provided, otherwise fall back to props or defaults
+  const effectiveAudioSrc = customAudioSrc || audioSrc || meditation?.audioSrc || "https://assets.mixkit.co/music/preview/mixkit-meditation-music-577.mp3";
+  const effectiveVideoSrc = customVideoSrc || videoSrc || meditation?.videoSrc;
+  
+  const handleLinkSubmit = (newVideoSrc: string | undefined, newAudioSrc: string | undefined) => {
+    if (newVideoSrc) setCustomVideoSrc(newVideoSrc);
+    if (newAudioSrc) setCustomAudioSrc(newAudioSrc);
+    
+    // Reset the player when new sources are provided
+    if (isPlaying) {
+      stopSession();
+      // Small timeout to ensure the audio/video elements are properly reset
+      setTimeout(() => {
+        startSession();
+      }, 100);
+    }
+  };
   
   const {
     isPlaying,
@@ -44,10 +64,11 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
     toggleMute,
     togglePlayPause,
     stopSession,
+    startSession,
     duration: playerDuration
   } = useMeditationPlayer({
-    audioSrc: meditationAudioSrc,
-    videoSrc: meditationVideoSrc,
+    audioSrc: effectiveAudioSrc,
+    videoSrc: effectiveVideoSrc,
     duration: meditationDuration,
     onComplete
   });
@@ -62,13 +83,15 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
       </CardHeader>
       
       <CardContent className="space-y-4">
+        <MeditationLinkInput onLinkSubmit={handleLinkSubmit} />
+        
         <MeditationProgress 
           duration={playerDuration}
           currentTime={currentTime}
           timeRemaining={timeRemaining}
           muted={muted}
           onToggleMute={toggleMute}
-          videoSrc={meditationVideoSrc}
+          videoSrc={effectiveVideoSrc}
           videoRef={videoRef}
         />
       </CardContent>
