@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Timer, PlayCircle } from 'lucide-react';
+import { Timer, PlayCircle, Video } from 'lucide-react';
 
 export interface MeditationOption {
   id: string;
@@ -10,6 +10,7 @@ export interface MeditationOption {
   description: string;
   duration: number; // in seconds
   audioSrc: string;
+  videoSrc?: string;
 }
 
 interface FreeMeditationSelectorProps {
@@ -39,9 +40,17 @@ const FreeMeditationSelector: React.FC<FreeMeditationSelectorProps> = ({
               <div>
                 <div className="text-white font-medium">{meditation.title}</div>
                 <div className="text-gray-300 text-sm mt-1">{meditation.description}</div>
-                <div className="flex items-center text-gray-400 text-xs mt-2">
-                  <Timer size={12} className="mr-1" />
-                  {Math.floor(meditation.duration / 60)} minutes
+                <div className="flex items-center gap-3 text-gray-400 text-xs mt-2">
+                  <div className="flex items-center">
+                    <Timer size={12} className="mr-1" />
+                    {Math.floor(meditation.duration / 60)} minutes
+                  </div>
+                  {meditation.videoSrc && (
+                    <div className="flex items-center">
+                      <Video size={12} className="mr-1" />
+                      Video
+                    </div>
+                  )}
                 </div>
               </div>
               <Button 

@@ -12,21 +12,24 @@ const sampleMeditations: MeditationOption[] = [
     title: 'Morning Calm',
     description: 'Start your day with a peaceful 10-minute meditation to set a positive tone.',
     duration: 600, // 10 minutes
-    audioSrc: 'https://assets.mixkit.co/music/preview/mixkit-meditation-music-577.mp3' // Example audio URL
+    audioSrc: 'https://assets.mixkit.co/music/preview/mixkit-meditation-music-577.mp3', // Example audio URL
+    videoSrc: 'https://assets.mixkit.co/videos/preview/mixkit-beach-sunset-with-palm-trees-1169-large.mp4' // Example video URL
   },
   {
     id: '2',
     title: 'Stress Relief',
     description: 'Release tension and find inner peace with this guided meditation.',
     duration: 600, // 10 minutes
-    audioSrc: 'https://assets.mixkit.co/music/preview/mixkit-dreaming-big-31.mp3' // Example audio URL
+    audioSrc: 'https://assets.mixkit.co/music/preview/mixkit-dreaming-big-31.mp3', // Example audio URL
+    videoSrc: 'https://assets.mixkit.co/videos/preview/mixkit-white-sand-beach-and-palm-trees-1208-large.mp4' // Example video URL
   },
   {
     id: '3',
     title: 'Deep Relaxation',
     description: 'Unwind and let go of your day with this calming meditation practice.',
     duration: 600, // 10 minutes
-    audioSrc: 'https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3' // Example audio URL
+    audioSrc: 'https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3', // Example audio URL
+    videoSrc: 'https://assets.mixkit.co/videos/preview/mixkit-forest-stream-in-the-sunlight-529-large.mp4' // Example video URL
   }
 ];
 
@@ -73,8 +76,10 @@ const FreeMeditationPage: React.FC = () => {
               title={selectedMeditation.title}
               description={selectedMeditation.description}
               audioSrc={selectedMeditation.audioSrc}
+              videoSrc={selectedMeditation.videoSrc}
               duration={selectedMeditation.duration}
               onComplete={handleMeditationComplete}
+              onClose={handleClosePlayer}
             />
           )}
         </DialogContent>

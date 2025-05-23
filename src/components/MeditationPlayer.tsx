@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Pause, Play, Square as Stop, Timer } from 'lucide-react';
+import { Pause, Play, Square as Stop, Timer, Volume2, VolumeX } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { MeditationScript } from '@/types/meditation';
 
@@ -12,6 +12,7 @@ interface MeditationPlayerProps {
   title?: string;
   description?: string;
   audioSrc?: string;
+  videoSrc?: string;
   duration?: number; // in seconds
   meditation?: MeditationScript;
   onComplete?: () => void;
@@ -22,6 +23,7 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
   title,
   description,
   audioSrc,
+  videoSrc,
   duration = 600, // default 10 minutes
   meditation,
   onComplete,
@@ -30,14 +32,17 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(meditation?.duration || duration);
+  const [muted, setMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const intervalRef = useRef<number | null>(null);
   
   // Use meditation properties if provided, otherwise use direct props
   const meditationTitle = meditation?.title || title || "";
   const meditationDescription = meditation?.description || description || "";
   const meditationDuration = meditation?.duration || duration;
-  const meditationAudioSrc = audioSrc || "https://assets.mixkit.co/music/preview/mixkit-meditation-music-577.mp3"; // Default audio
+  const meditationAudioSrc = audioSrc || meditation?.audioSrc || "https://assets.mixkit.co/music/preview/mixkit-meditation-music-577.mp3"; // Default audio
+  const meditationVideoSrc = videoSrc || meditation?.videoSrc;
   
   // Initialize audio element
   useEffect(() => {
@@ -47,6 +52,7 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
     if (audioRef.current) {
       audioRef.current.addEventListener('ended', handleEnd);
       audioRef.current.addEventListener('error', handleError);
+      audioRef.current.loop = true; // Loop the audio
     }
     
     // Cleanup
@@ -63,6 +69,17 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
     };
   }, [meditationAudioSrc]);
 
+  // Initialize video if available
+  useEffect(() => {
+    if (videoRef.current && meditationVideoSrc) {
+      if (isPlaying) {
+        videoRef.current.play().catch(handleError);
+      } else {
+        videoRef.current.pause();
+      }
+    }
+  }, [isPlaying, meditationVideoSrc]);
+
   // Handle play/pause
   const togglePlayPause = () => {
     if (isPlaying) {
@@ -72,11 +89,24 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
     }
   };
 
+  // Toggle mute
+  const toggleMute = () => {
+    if (audioRef.current) {
+      audioRef.current.muted = !muted;
+      setMuted(!muted);
+    }
+  };
+
   // Start session
   const startSession = () => {
     if (audioRef.current) {
       audioRef.current.play().catch(handleError);
       setIsPlaying(true);
+      
+      // Start video if available
+      if (videoRef.current && meditationVideoSrc) {
+        videoRef.current.play().catch(console.error);
+      }
       
       // Start timer
       if (intervalRef.current === null) {
@@ -109,6 +139,11 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
       audioRef.current.pause();
       setIsPlaying(false);
       
+      // Pause video if available
+      if (videoRef.current && meditationVideoSrc) {
+        videoRef.current.pause();
+      }
+      
       // Pause timer
       if (intervalRef.current !== null) {
         clearInterval(intervalRef.current);
@@ -130,6 +165,12 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
       setIsPlaying(false);
       setCurrentTime(0);
       setTimeRemaining(meditationDuration);
+      
+      // Reset video if available
+      if (videoRef.current && meditationVideoSrc) {
+        videoRef.current.pause();
+        videoRef.current.currentTime = 0;
+      }
       
       // Stop timer
       if (intervalRef.current !== null) {
@@ -191,6 +232,15 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
             <Timer className="text-[#7CE0C6]" size={16} />
             <span className="text-gray-300 text-sm">{formatTime(meditationDuration)} Session</span>
           </div>
+          
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleMute}
+            className="text-[#7CE0C6] hover:bg-[#1d4230]"
+          >
+            {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          </Button>
         </div>
         
         <Progress 
@@ -198,11 +248,29 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({
           value={progressPercentage} 
         />
         
-        <div className="bg-[#0A1A14] p-6 rounded-md min-h-[120px] flex items-center justify-center">
-          <p className="text-5xl font-light text-[#7CE0C6]">
-            {formatTime(timeRemaining)}
-          </p>
-        </div>
+        {meditationVideoSrc ? (
+          <div className="relative rounded-md overflow-hidden aspect-video">
+            <video 
+              ref={videoRef}
+              src={meditationVideoSrc}
+              className="w-full h-full object-cover"
+              muted={true}
+              loop
+              playsInline
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="text-5xl font-light text-[#7CE0C6] bg-[#0A1A14]/50 px-8 py-4 rounded-lg">
+                {formatTime(timeRemaining)}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-[#0A1A14] p-6 rounded-md min-h-[120px] flex items-center justify-center">
+            <p className="text-5xl font-light text-[#7CE0C6]">
+              {formatTime(timeRemaining)}
+            </p>
+          </div>
+        )}
       </CardContent>
       
       <CardFooter className="flex justify-center gap-4 py-6">
