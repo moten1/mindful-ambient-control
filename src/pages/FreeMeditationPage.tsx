@@ -13,7 +13,7 @@ const sampleMeditations: MeditationOption[] = [
     description: 'Start your day with a peaceful 10-minute meditation to set a positive tone.',
     duration: 600, // 10 minutes
     audioSrc: 'https://assets.mixkit.co/music/preview/mixkit-meditation-music-577.mp3', // Example audio URL
-    videoSrc: 'https://assets.mixkit.co/videos/preview/mixkit-beach-sunset-with-palm-trees-1169-large.mp4' // Example video URL
+    videoSrc: 'https://youtu.be/7EJKDj6ELiM' // YouTube meditation video
   },
   {
     id: '2',
@@ -98,3 +98,4 @@ const FreeMeditationPage: React.FC = () => {
 };
 
 export default FreeMeditationPage;
+

@@ -32,6 +32,18 @@ const MeditationProgress: React.FC<MeditationProgressProps> = ({
 
   // Calculate progress percentage
   const progressPercentage = (currentTime / duration) * 100;
+  
+  // Check if the video is from YouTube
+  const isYouTubeVideo = videoSrc?.includes('youtube.com') || videoSrc?.includes('youtu.be');
+  
+  // Extract YouTube video ID if it's a YouTube link
+  const getYouTubeVideoId = (url: string): string | null => {
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[7].length === 11) ? match[7] : null;
+  };
+  
+  const youtubeVideoId = videoSrc ? getYouTubeVideoId(videoSrc) : null;
 
   return (
     <div className="space-y-4">
@@ -58,14 +70,24 @@ const MeditationProgress: React.FC<MeditationProgressProps> = ({
       
       {videoSrc ? (
         <div className="relative rounded-md overflow-hidden aspect-video">
-          <video 
-            ref={videoRef}
-            src={videoSrc}
-            className="w-full h-full object-cover"
-            muted={true}
-            loop
-            playsInline
-          />
+          {isYouTubeVideo && youtubeVideoId ? (
+            <iframe 
+              src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&controls=0&disablekb=1&fs=0&modestbranding=1&mute=1&loop=1&playlist=${youtubeVideoId}&rel=0`}
+              allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen={false}
+              className="w-full h-full object-cover"
+              title="Meditation Video"
+            />
+          ) : (
+            <video 
+              ref={videoRef}
+              src={videoSrc}
+              className="w-full h-full object-cover"
+              muted={true}
+              loop
+              playsInline
+            />
+          )}
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-5xl font-light text-[#7CE0C6] bg-[#0A1A14]/50 px-8 py-4 rounded-lg">
               {formatTime(timeRemaining)}
@@ -84,3 +106,4 @@ const MeditationProgress: React.FC<MeditationProgressProps> = ({
 };
 
 export default MeditationProgress;
+

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription } from '@/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -59,14 +59,17 @@ const MeditationLinkInput: React.FC<MeditationLinkInputProps> = ({ onLinkSubmit 
               name="videoLink"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[#7CE0C6]">Video Link (optional)</FormLabel>
+                  <FormLabel className="text-[#7CE0C6]">Video Link (YouTube or direct video link)</FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="https://example.com/video.mp4" 
+                      placeholder="https://www.youtube.com/watch?v=7EJKDj6ELiM" 
                       {...field} 
                       className="bg-[#132920] border-[#2E9E83] text-white"
                     />
                   </FormControl>
+                  <FormDescription className="text-gray-400 text-xs">
+                    YouTube links will be embedded with protection against downloading
+                  </FormDescription>
                 </FormItem>
               )}
             />
@@ -112,3 +115,4 @@ const MeditationLinkInput: React.FC<MeditationLinkInputProps> = ({ onLinkSubmit 
 };
 
 export default MeditationLinkInput;
+
