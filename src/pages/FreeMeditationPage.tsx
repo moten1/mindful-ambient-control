@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from 'react-router-dom';
 import FreeMeditationSelector, { MeditationOption } from '@/components/FreeMeditationSelector';
 import MeditationPlayer from '@/components/MeditationPlayer';
 
@@ -36,6 +36,7 @@ const sampleMeditations: MeditationOption[] = [
 const FreeMeditationPage: React.FC = () => {
   const [selectedMeditation, setSelectedMeditation] = useState<MeditationOption | null>(null);
   const [showPlayer, setShowPlayer] = useState(false);
+  const navigate = useNavigate();
   
   const handleSelectMeditation = (meditation: MeditationOption) => {
     setSelectedMeditation(meditation);
@@ -89,7 +90,10 @@ const FreeMeditationPage: React.FC = () => {
         <p className="text-[#7CE0C6]">
           Upgrade to premium for personalized AI-generated meditations
         </p>
-        <Button className="mt-4 bg-[#2E9E83] hover:bg-[#39BF9D]">
+        <Button 
+          onClick={() => navigate('/premium')}
+          className="mt-4 bg-[#2E9E83] hover:bg-[#39BF9D]"
+        >
           Explore Premium Features
         </Button>
       </div>
@@ -98,4 +102,3 @@ const FreeMeditationPage: React.FC = () => {
 };
 
 export default FreeMeditationPage;
-

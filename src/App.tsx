@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import Index from "./pages/Index";
 import FreeMeditationPage from "./pages/FreeMeditationPage";
+import PremiumDashboard from "./pages/PremiumDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,7 +21,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<FreeMeditationPage />} />
-            <Route path="/premium" element={<Index />} />
+            <Route path="/premium" element={<PremiumDashboard />} />
+            <Route path="/legacy" element={<Index />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
