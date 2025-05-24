@@ -71,12 +71,21 @@ const PremiumDashboard: React.FC = () => {
     return meditationScripts.find(m => m.energyType === 'balancing');
   };
 
-  const handleStartAnalysis = () => {
-    setIsAnalysisActive(true);
-    toast({
-      title: "AI Analysis Started",
-      description: "Beginning biometric monitoring and environment adaptation",
-    });
+  const handleStartAnalysis = async () => {
+    try {
+      setIsAnalysisActive(true);
+      toast({
+        title: "AI Analysis Started",
+        description: "Beginning biometric monitoring and environment adaptation",
+      });
+    } catch (error) {
+      console.error('Error starting analysis:', error);
+      toast({
+        title: "Analysis Error",
+        description: "Failed to start biometric analysis",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleStopAnalysis = () => {
