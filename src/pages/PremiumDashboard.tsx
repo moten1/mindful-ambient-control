@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Brain, Sparkles, Settings, Play } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -29,6 +29,24 @@ const PremiumDashboard: React.FC = () => {
   const faceAnalysis = useFaceAnalysis(isAnalysisActive);
   const voiceAnalysis = useVoiceSensing(isAnalysisActive);
   const wearableDevice = useWearableDevice();
+
+  console.log('Face Analysis State:', {
+    isAnalyzing: faceAnalysis.isAnalyzing,
+    isPermissionGranted: faceAnalysis.isPermissionGranted,
+    metrics: faceAnalysis.metrics
+  });
+
+  console.log('Voice Analysis State:', {
+    isListening: voiceAnalysis.isListening,
+    isPermissionGranted: voiceAnalysis.isPermissionGranted,
+    metrics: voiceAnalysis.metrics
+  });
+
+  console.log('Wearable State:', {
+    isConnected: wearableDevice.isConnected,
+    isAvailable: wearableDevice.isAvailable,
+    metrics: wearableDevice.metrics
+  });
 
   // Generate AI insights based on biometric data
   const sensorData = {
@@ -72,24 +90,73 @@ const PremiumDashboard: React.FC = () => {
   };
 
   const handleStartAnalysis = async () => {
-    try {
-      setIsAnalysisActive(true);
-      toast({
-        title: "AI Analysis Started",
-        description: "Beginning biometric monitoring and environment adaptation",
-      });
-    } catch (error) {
-      console.error('Error starting analysis:', error);
-      toast({
-        title: "Analysis Error",
-        description: "Failed to start biometric analysis",
-        variant: "destructive"
-      });
+    console.log('Starting AI Analysis...');
+    
+    // Request permissions first if not granted
+    if (!faceAnalysis.isPermissionGranted) {
+      console.log('Requesting face analysis permission...');
+      const facePermission = await faceAnalysis.requestPermission();
+      if (!facePermission) {
+        toast({
+          title: "Camera Permission Required",
+          description: "Please enable camera access for face analysis",
+          variant: "destructive"
+        });
+      }
     }
+
+    if (!voiceAnalysis.isPermissionGranted) {
+      console.log('Requesting voice analysis permission...');
+      try {
+        const voicePermission = await voiceAnalysis.requestPermission();
+        if (!voicePermission) {
+          toast({
+            title: "Microphone Permission Required", 
+            description: "Please enable microphone access for voice analysis. Check your browser settings and reload the page.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error('Voice permission error:', error);
+        toast({
+          title: "Microphone Access Error",
+          description: "Unable to access microphone. Please check browser settings and try again.",
+          variant: "destructive"
+        });
+      }
+    }
+
+    setIsAnalysisActive(true);
+    
+    // Start individual analyses
+    if (faceAnalysis.isPermissionGranted && !faceAnalysis.isAnalyzing) {
+      console.log('Starting face analysis...');
+      faceAnalysis.startAnalyzing();
+    }
+    
+    if (voiceAnalysis.isPermissionGranted && !voiceAnalysis.isListening) {
+      console.log('Starting voice analysis...');
+      voiceAnalysis.startListening();
+    }
+
+    toast({
+      title: "AI Analysis Started",
+      description: "Beginning biometric monitoring and environment adaptation",
+    });
   };
 
   const handleStopAnalysis = () => {
+    console.log('Stopping AI Analysis...');
     setIsAnalysisActive(false);
+    
+    if (faceAnalysis.isAnalyzing) {
+      faceAnalysis.stopAnalyzing();
+    }
+    
+    if (voiceAnalysis.isListening) {
+      voiceAnalysis.stopListening();
+    }
+
     toast({
       title: "AI Analysis Stopped",
       description: "Biometric monitoring paused",
@@ -97,6 +164,7 @@ const PremiumDashboard: React.FC = () => {
   };
 
   const handleApplyRecommendation = () => {
+    console.log('Applying AI recommendation:', environmentSettings);
     toast({
       title: "Environment Adapted",
       description: "AI has optimized your meditation environment based on your biometrics",
@@ -104,6 +172,7 @@ const PremiumDashboard: React.FC = () => {
   };
 
   const handleStartMeditation = (meditation: MeditationScript) => {
+    console.log('Starting meditation:', meditation.title);
     setSelectedMeditation(meditation);
     setShowPlayer(true);
   };
@@ -282,6 +351,12 @@ const PremiumDashboard: React.FC = () => {
         {/* Meditation Player Dialog */}
         <Dialog open={showPlayer} onOpenChange={setShowPlayer}>
           <DialogContent className="bg-[#0A1A14] border-[#2E9E83] text-white p-0 max-w-4xl">
+            <DialogTitle className="sr-only">
+              {selectedMeditation ? `Playing ${selectedMeditation.title}` : 'Meditation Player'}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              AI-powered meditation session with biometric monitoring and adaptive environment controls
+            </DialogDescription>
             {selectedMeditation && (
               <MeditationPlayer
                 meditation={selectedMeditation}
