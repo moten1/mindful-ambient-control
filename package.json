@@ -86,3 +86,6 @@
     "vite": "^5.4.1"
   }
 }
+"@tensorflow-models/face-landmarks-detection": "^1.0.0",
+"@tensorflow-models/speech-commands": "^0.6.2",
+"@tensorflow/tfjs": "^4.13.0",
