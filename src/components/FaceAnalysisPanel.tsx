@@ -13,20 +13,6 @@ interface FaceAnalysisPanelProps {
   onRequestPermission: () => Promise<boolean>;
   onToggleAnalyzing: () => void;
 }
-
-export const FaceAnalysisPanel = ({
-  metrics,
-  isAnalyzing,
-  isPermissionGranted,
-  onRequestPermission,
-  onToggleAnalyzing
-}: FaceAnalysisPanelProps) => {
-  return (
-    <Card className="bg-[#132920] border-[#2E9E83]">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-[#7CE0C6] text-lg flex items-center justify-between">
-          <span>Face Analysis</span>
-          {isPermissionGranted ? (
             <Button
               onClick={onToggleAnalyzing}
               variant="ghost"
