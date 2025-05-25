@@ -109,3 +109,4 @@ export const FaceAnalysisPanel = ({
 };
 
 export default FaceAnalysisPanel;
+import { useTensorFlowBiometrics } from '../hooks/useTensorFlowBiometrics';
