@@ -12,10 +12,10 @@ import WearableDevicePanel from '@/components/WearableDevicePanel';
 import AIInsightsPanel from '@/components/AIInsightsPanel';
 import MeditationPlayer from '@/components/MeditationPlayer';
 
-import { useFaceAnalysis } from '@/hooks/useFaceAnalysis';
-import { useVoiceSensing } from '@/hooks/useVoiceSensing';
+import { useEnhancedFaceAnalysis } from '@/hooks/useEnhancedFaceAnalysis';
+import { useEnhancedVoiceAnalysis } from '@/hooks/useEnhancedVoiceAnalysis';
 import { useWearableDevice } from '@/hooks/useWearableDevice';
-import { generateEnvironmentSettings, generateInsights, generateSessionRecommendation } from '@/utils/aiEngine';
+import { useRealBiometrics } from '@/hooks/useRealBiometrics';
 import { MeditationScript } from '@/types/meditation';
 import { meditationScripts } from '@/data/meditationScripts';
 
@@ -24,64 +24,71 @@ const PremiumDashboard: React.FC = () => {
   const [selectedMeditation, setSelectedMeditation] = useState<MeditationScript | null>(null);
   const [showPlayer, setShowPlayer] = useState(false);
   const [adaptationScore, setAdaptationScore] = useState(75);
+  const [aiInsights, setAiInsights] = useState<any[]>([]);
+  const [sessionRecommendation, setSessionRecommendation] = useState('');
+  const [environmentSettings, setEnvironmentSettings] = useState({
+    sound: 50,
+    temperature: 50,
+    brightness: 50,
+    vibration: 50,
+    light: 50
+  });
 
-  // Biometric hooks
-  const faceAnalysis = useFaceAnalysis(isAnalysisActive);
-  const voiceAnalysis = useVoiceSensing(isAnalysisActive);
+  // Enhanced biometric hooks with real backend integration
+  const faceAnalysis = useEnhancedFaceAnalysis(isAnalysisActive);
+  const voiceAnalysis = useEnhancedVoiceAnalysis(isAnalysisActive);
   const wearableDevice = useWearableDevice();
+  const { generateAIInsights, isProcessing } = useRealBiometrics();
 
-  console.log('Face Analysis State:', {
+  console.log('Enhanced Face Analysis State:', {
     isAnalyzing: faceAnalysis.isAnalyzing,
     isPermissionGranted: faceAnalysis.isPermissionGranted,
-    metrics: faceAnalysis.metrics
+    metrics: faceAnalysis.metrics,
+    isProcessing: faceAnalysis.isProcessing
   });
 
-  console.log('Voice Analysis State:', {
+  console.log('Enhanced Voice Analysis State:', {
     isListening: voiceAnalysis.isListening,
     isPermissionGranted: voiceAnalysis.isPermissionGranted,
-    metrics: voiceAnalysis.metrics
+    metrics: voiceAnalysis.metrics,
+    isProcessing: voiceAnalysis.isProcessing
   });
 
-  console.log('Wearable State:', {
-    isConnected: wearableDevice.isConnected,
-    isAvailable: wearableDevice.isAvailable,
-    metrics: wearableDevice.metrics
-  });
-
-  // Generate AI insights based on biometric data
-  const sensorData = {
-    voice: voiceAnalysis.metrics,
-    face: faceAnalysis.metrics,
-    wearable: wearableDevice.metrics
-  };
-
-  const insights = generateInsights(sensorData);
-  const sessionRecommendation = generateSessionRecommendation(sensorData);
-  const environmentSettings = generateEnvironmentSettings(sensorData);
-
-  // Update adaptation score based on active analysis
+  // Generate real AI insights
   useEffect(() => {
     if (isAnalysisActive) {
-      const activeComponents = [
-        faceAnalysis.isAnalyzing,
-        voiceAnalysis.isListening,
-        wearableDevice.isConnected
-      ].filter(Boolean).length;
+      const generateInsights = async () => {
+        const biometricData = {
+          face: faceAnalysis.metrics,
+          voice: voiceAnalysis.metrics,
+          wearable: wearableDevice.metrics
+        };
+
+        const result = await generateAIInsights(biometricData);
+        if (result) {
+          console.log('Generated AI insights:', result);
+          setAiInsights(result.insights || []);
+          setAdaptationScore(result.adaptationScore || 75);
+          setSessionRecommendation(result.recommendation || '');
+          setEnvironmentSettings(result.environmentSettings || environmentSettings);
+        }
+      };
+
+      // Generate insights every 10 seconds when analysis is active
+      const interval = setInterval(generateInsights, 10000);
       
-      const baseScore = activeComponents * 25;
-      const biometricBonus = Math.round((faceAnalysis.metrics.attentionLevel + 
-                                       voiceAnalysis.metrics.clarity + 
-                                       wearableDevice.metrics.heartRate) / 3);
-      
-      setAdaptationScore(Math.min(100, baseScore + biometricBonus));
+      // Generate initial insights
+      generateInsights();
+
+      return () => clearInterval(interval);
     }
-  }, [isAnalysisActive, faceAnalysis.metrics, voiceAnalysis.metrics, wearableDevice.metrics]);
+  }, [isAnalysisActive, faceAnalysis.metrics, voiceAnalysis.metrics, wearableDevice.metrics, generateAIInsights]);
 
   // Get recommended meditation based on current state
   const getRecommendedMeditation = (): MeditationScript | undefined => {
-    if (sensorData.face.emotion === 'stressed' || sensorData.voice.tone === 'stressed') {
+    if (faceAnalysis.metrics.emotion === 'stressed' || voiceAnalysis.metrics.tone === 'stressed') {
       return meditationScripts.find(m => m.energyType === 'calming');
-    } else if (sensorData.face.attentionLevel < 60) {
+    } else if (faceAnalysis.metrics.attentionLevel < 60) {
       return meditationScripts.find(m => m.energyType === 'focusing');
     } else if (wearableDevice.metrics.energyLevel === 'low') {
       return meditationScripts.find(m => m.energyType === 'energizing');
@@ -90,29 +97,29 @@ const PremiumDashboard: React.FC = () => {
   };
 
   const handleStartAnalysis = async () => {
-    console.log('Starting AI Analysis...');
+    console.log('Starting Enhanced AI Analysis...');
     
     // Request permissions first if not granted
     if (!faceAnalysis.isPermissionGranted) {
-      console.log('Requesting face analysis permission...');
+      console.log('Requesting enhanced face analysis permission...');
       const facePermission = await faceAnalysis.requestPermission();
       if (!facePermission) {
         toast({
           title: "Camera Permission Required",
-          description: "Please enable camera access for face analysis",
+          description: "Please enable camera access for AI-powered face analysis",
           variant: "destructive"
         });
       }
     }
 
     if (!voiceAnalysis.isPermissionGranted) {
-      console.log('Requesting voice analysis permission...');
+      console.log('Requesting enhanced voice analysis permission...');
       try {
         const voicePermission = await voiceAnalysis.requestPermission();
         if (!voicePermission) {
           toast({
             title: "Microphone Permission Required", 
-            description: "Please enable microphone access for voice analysis. Check your browser settings and reload the page.",
+            description: "Please enable microphone access for AI-powered voice analysis",
             variant: "destructive"
           });
         }
@@ -120,7 +127,7 @@ const PremiumDashboard: React.FC = () => {
         console.error('Voice permission error:', error);
         toast({
           title: "Microphone Access Error",
-          description: "Unable to access microphone. Please check browser settings and try again.",
+          description: "Unable to access microphone for enhanced analysis",
           variant: "destructive"
         });
       }
@@ -130,23 +137,23 @@ const PremiumDashboard: React.FC = () => {
     
     // Start individual analyses
     if (faceAnalysis.isPermissionGranted && !faceAnalysis.isAnalyzing) {
-      console.log('Starting face analysis...');
+      console.log('Starting enhanced face analysis...');
       faceAnalysis.startAnalyzing();
     }
     
     if (voiceAnalysis.isPermissionGranted && !voiceAnalysis.isListening) {
-      console.log('Starting voice analysis...');
+      console.log('Starting enhanced voice analysis...');
       voiceAnalysis.startListening();
     }
 
     toast({
       title: "AI Analysis Started",
-      description: "Beginning biometric monitoring and environment adaptation",
+      description: "Enhanced biometric monitoring with real AI insights now active",
     });
   };
 
   const handleStopAnalysis = () => {
-    console.log('Stopping AI Analysis...');
+    console.log('Stopping Enhanced AI Analysis...');
     setIsAnalysisActive(false);
     
     if (faceAnalysis.isAnalyzing) {
@@ -159,7 +166,7 @@ const PremiumDashboard: React.FC = () => {
 
     toast({
       title: "AI Analysis Stopped",
-      description: "Biometric monitoring paused",
+      description: "Enhanced biometric monitoring paused",
     });
   };
 
@@ -167,7 +174,7 @@ const PremiumDashboard: React.FC = () => {
     console.log('Applying AI recommendation:', environmentSettings);
     toast({
       title: "Environment Adapted",
-      description: "AI has optimized your meditation environment based on your biometrics",
+      description: "AI has optimized your meditation environment using real-time biometric analysis",
     });
   };
 
@@ -182,7 +189,7 @@ const PremiumDashboard: React.FC = () => {
     setSelectedMeditation(null);
     toast({
       title: "Session Complete",
-      description: "Great job! Your meditation session data has been saved.",
+      description: "Your meditation session with AI insights has been completed.",
     });
   };
 
@@ -193,14 +200,14 @@ const PremiumDashboard: React.FC = () => {
         <div className="text-center mb-8">
           <h1 className="text-[#7CE0C6] text-xl mb-2 flex items-center justify-center gap-2">
             <Sparkles className="w-6 h-6" />
-            Inner Current Premium
+            Inner Current Premium - AI Enhanced
           </h1>
           <h2 className="text-4xl md:text-5xl font-light mb-4">
-            AI-Powered Meditation Experience
+            Real-Time AI Biometric Analysis
           </h2>
           <p className="text-gray-300 max-w-2xl mx-auto">
-            Advanced biometric monitoring, personalized AI insights, and adaptive environment 
-            controls for the ultimate meditation experience.
+            Advanced biometric monitoring with real AI processing, personalized insights using open-source LLMs, 
+            and adaptive environment controls powered by machine learning.
           </p>
         </div>
 
@@ -208,6 +215,7 @@ const PremiumDashboard: React.FC = () => {
         <div className="mb-8 flex justify-center gap-4">
           <Button
             onClick={isAnalysisActive ? handleStopAnalysis : handleStartAnalysis}
+            disabled={isProcessing}
             className={`${
               isAnalysisActive 
                 ? 'bg-red-600 hover:bg-red-700' 
@@ -215,7 +223,7 @@ const PremiumDashboard: React.FC = () => {
             } flex items-center gap-2`}
           >
             <Brain className="w-4 h-4" />
-            {isAnalysisActive ? 'Stop AI Analysis' : 'Start AI Analysis'}
+            {isProcessing ? 'Processing...' : isAnalysisActive ? 'Stop AI Analysis' : 'Start AI Analysis'}
           </Button>
           
           <Button 
@@ -223,7 +231,7 @@ const PremiumDashboard: React.FC = () => {
             className="border-[#2E9E83] text-[#7CE0C6] hover:bg-[#143024]"
           >
             <Settings className="w-4 h-4 mr-2" />
-            Settings
+            AI Settings
           </Button>
         </div>
 
@@ -269,10 +277,10 @@ const PremiumDashboard: React.FC = () => {
             onDisconnect={wearableDevice.disconnect}
           />
 
-          {/* AI Insights - spans full width on larger screens */}
+          {/* AI Insights - Enhanced with real backend */}
           <div className="xl:col-span-3">
             <AIInsightsPanel
-              insights={insights}
+              insights={aiInsights}
               adaptationScore={adaptationScore}
               sessionRecommendation={sessionRecommendation}
               onApplyRecommendation={handleApplyRecommendation}
@@ -287,7 +295,7 @@ const PremiumDashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card className="bg-[#132920] border-[#2E9E83]">
             <CardHeader className="pb-2">
-              <CardTitle className="text-[#7CE0C6] text-sm">Environment Controls</CardTitle>
+              <CardTitle className="text-[#7CE0C6] text-sm">Real-Time Environment</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 text-sm">
@@ -309,21 +317,21 @@ const PremiumDashboard: React.FC = () => {
 
           <Card className="bg-[#132920] border-[#2E9E83]">
             <CardHeader className="pb-2">
-              <CardTitle className="text-[#7CE0C6] text-sm">Session Stats</CardTitle>
+              <CardTitle className="text-[#7CE0C6] text-sm">AI Session Stats</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-300">Sessions Today</span>
-                  <span className="text-white">3</span>
+                  <span className="text-gray-300">AI Insights</span>
+                  <span className="text-white">{aiInsights.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-300">Total Time</span>
-                  <span className="text-white">45 min</span>
+                  <span className="text-gray-300">Adaptation Score</span>
+                  <span className="text-white">{adaptationScore}%</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-300">Streak</span>
-                  <span className="text-white">7 days</span>
+                  <span className="text-gray-300">Processing Status</span>
+                  <span className="text-white">{isProcessing ? 'Active' : 'Ready'}</span>
                 </div>
               </div>
             </CardContent>
@@ -331,7 +339,7 @@ const PremiumDashboard: React.FC = () => {
 
           <Card className="bg-[#132920] border-[#2E9E83]">
             <CardHeader className="pb-2">
-              <CardTitle className="text-[#7CE0C6] text-sm">Quick Start</CardTitle>
+              <CardTitle className="text-[#7CE0C6] text-sm">AI Quick Start</CardTitle>
             </CardHeader>
             <CardContent>
               <Button 
@@ -340,6 +348,7 @@ const PremiumDashboard: React.FC = () => {
                   if (recommended) handleStartMeditation(recommended);
                 }}
                 className="w-full bg-[#2E9E83] hover:bg-[#39BF9D] flex items-center gap-2"
+                disabled={isProcessing}
               >
                 <Play className="w-4 h-4" />
                 Start AI Session
@@ -352,10 +361,10 @@ const PremiumDashboard: React.FC = () => {
         <Dialog open={showPlayer} onOpenChange={setShowPlayer}>
           <DialogContent className="bg-[#0A1A14] border-[#2E9E83] text-white p-0 max-w-4xl">
             <DialogTitle className="sr-only">
-              {selectedMeditation ? `Playing ${selectedMeditation.title}` : 'Meditation Player'}
+              {selectedMeditation ? `Playing ${selectedMeditation.title}` : 'AI-Enhanced Meditation Player'}
             </DialogTitle>
             <DialogDescription className="sr-only">
-              AI-powered meditation session with biometric monitoring and adaptive environment controls
+              AI-powered meditation session with real-time biometric monitoring and adaptive environment controls
             </DialogDescription>
             {selectedMeditation && (
               <MeditationPlayer
