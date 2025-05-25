@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
-import { useRealBiometrics } from './useRealBiometrics';
+import { useTensorFlowBiometrics } from './useTensorFlowBiometrics';
 
 export type VoiceMetrics = {
   volume: number;
@@ -28,11 +28,9 @@ export const useEnhancedVoiceAnalysis = (isActive: boolean) => {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
   const analysisIntervalRef = useRef<number | null>(null);
   
-  const { analyzeVoiceData, isProcessing } = useRealBiometrics();
+  const { analyzeVoiceData, isProcessing } = useTensorFlowBiometrics();
 
   const requestPermission = async () => {
     try {
@@ -61,23 +59,12 @@ export const useEnhancedVoiceAnalysis = (isActive: boolean) => {
           const source = audioContextRef.current.createMediaStreamSource(stream);
           source.connect(analyserRef.current);
           
-          console.log("Enhanced audio context initialized");
+          console.log("TensorFlow.js audio analysis initialized");
         }
-        
-        // Initialize media recorder for real analysis
-        mediaRecorderRef.current = new MediaRecorder(stream, {
-          mimeType: 'audio/webm;codecs=opus'
-        });
-        
-        mediaRecorderRef.current.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            audioChunksRef.current.push(event.data);
-          }
-        };
         
         toast({
           title: "Microphone Access Granted",
-          description: "Enhanced voice analysis is now active",
+          description: "TensorFlow.js voice analysis is now active",
         });
         
         return true;
@@ -95,34 +82,26 @@ export const useEnhancedVoiceAnalysis = (isActive: boolean) => {
       setError('Permission denied for audio capture');
       toast({
         title: "Permission Denied",
-        description: "Please allow microphone access for voice analysis",
+        description: "Please allow microphone access for TensorFlow voice analysis",
         variant: "destructive" 
       });
       return false;
     }
   };
 
-  const performRealAnalysis = useCallback(async () => {
-    if (!mediaRecorderRef.current || audioChunksRef.current.length === 0 || isProcessing) {
+  const performTensorFlowAnalysis = useCallback(async () => {
+    if (!dataArrayRef.current || isProcessing) {
       return;
     }
 
-    // Convert audio chunks to base64
-    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-    
     // Get current frequency data
-    const frequencyData = dataArrayRef.current ? Array.from(dataArrayRef.current) : [];
+    const frequencyData = Array.from(dataArrayRef.current);
     
-    // Clear audio chunks for next analysis
-    audioChunksRef.current = [];
-    
-    // Send to backend for real analysis
-    const result = await analyzeVoiceData(base64Audio, frequencyData);
+    // Analyze with TensorFlow.js
+    const result = await analyzeVoiceData('', frequencyData);
     
     if (result) {
-      console.log('Real voice analysis result:', result);
+      console.log('TensorFlow voice analysis result:', result);
       setMetrics(prev => ({
         ...prev,
         ...result,
@@ -156,7 +135,7 @@ export const useEnhancedVoiceAnalysis = (isActive: boolean) => {
   };
 
   const startListening = () => {
-    if (!isPermissionGranted || !analyserRef.current || !mediaRecorderRef.current) {
+    if (!isPermissionGranted || !analyserRef.current) {
       console.log("Cannot start listening, missing permissions or components");
       return false;
     }
@@ -171,23 +150,12 @@ export const useEnhancedVoiceAnalysis = (isActive: boolean) => {
     // Start real-time frequency analysis
     analyzeAudio();
     
-    // Start recording for backend analysis
-    mediaRecorderRef.current.start();
-    
-    // Perform backend analysis every 5 seconds
+    // Perform TensorFlow analysis every 3 seconds
     analysisIntervalRef.current = window.setInterval(() => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stop();
-        setTimeout(() => {
-          if (mediaRecorderRef.current && isListening) {
-            mediaRecorderRef.current.start();
-          }
-        }, 100);
-      }
-      performRealAnalysis();
-    }, 5000);
+      performTensorFlowAnalysis();
+    }, 3000);
     
-    console.log("Enhanced voice analysis started");
+    console.log("TensorFlow.js voice analysis started");
     return true;
   };
   
@@ -204,15 +172,11 @@ export const useEnhancedVoiceAnalysis = (isActive: boolean) => {
       analysisIntervalRef.current = null;
     }
     
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-    
     if (audioContextRef.current && audioContextRef.current.state === 'running') {
       audioContextRef.current.suspend();
     }
     
-    console.log("Enhanced voice analysis stopped");
+    console.log("TensorFlow.js voice analysis stopped");
   };
 
   // Handle active state changes

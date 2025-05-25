@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
-import { useRealBiometrics } from './useRealBiometrics';
+import { useTensorFlowBiometrics } from './useTensorFlowBiometrics';
 
 export type FacialMetrics = {
   emotion: 'happy' | 'sad' | 'neutral' | 'stressed' | 'relaxed';
@@ -28,7 +28,12 @@ export const useEnhancedFaceAnalysis = (isActive: boolean) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const intervalRef = useRef<number | null>(null);
   
-  const { analyzeFaceData, isProcessing } = useRealBiometrics();
+  const { initializeModels, analyzeFaceData, isProcessing, isModelLoaded } = useTensorFlowBiometrics();
+
+  // Initialize TensorFlow models on mount
+  useEffect(() => {
+    initializeModels();
+  }, [initializeModels]);
 
   // Create video and canvas elements
   useEffect(() => {
@@ -77,6 +82,11 @@ export const useEnhancedFaceAnalysis = (isActive: boolean) => {
           };
         }
         
+        toast({
+          title: "Camera Access Granted",
+          description: "TensorFlow.js face analysis is now active",
+        });
+        
         return true;
       } else {
         setError('Camera not supported in this browser');
@@ -91,7 +101,7 @@ export const useEnhancedFaceAnalysis = (isActive: boolean) => {
       setError('Permission denied for camera access');
       toast({
         title: "Permission Denied",
-        description: "Please allow camera access to use face analysis features",
+        description: "Please allow camera access to use TensorFlow face analysis",
         variant: "destructive"
       });
       return false;
@@ -99,7 +109,7 @@ export const useEnhancedFaceAnalysis = (isActive: boolean) => {
   };
 
   const captureAndAnalyze = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || isProcessing) return;
+    if (!videoRef.current || !canvasRef.current || isProcessing || !isModelLoaded) return;
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -112,28 +122,34 @@ export const useEnhancedFaceAnalysis = (isActive: boolean) => {
       // Convert to base64
       const imageData = canvas.toDataURL('image/jpeg', 0.8);
       
-      // Send to backend for real analysis
+      // Analyze with TensorFlow.js
       const result = await analyzeFaceData(imageData);
       
       if (result) {
-        console.log('Real face analysis result:', result);
+        console.log('TensorFlow face analysis result:', result);
         setMetrics(prev => ({
           ...prev,
           ...result
         }));
       }
     }
-  }, [analyzeFaceData, isProcessing]);
+  }, [analyzeFaceData, isProcessing, isModelLoaded]);
 
   const startAnalyzing = () => {
-    if (!isPermissionGranted || !videoRef.current || !canvasRef.current) {
+    if (!isPermissionGranted || !videoRef.current || !canvasRef.current || !isModelLoaded) {
+      if (!isModelLoaded) {
+        toast({
+          title: "Models Loading",
+          description: "TensorFlow.js models are still loading. Please wait...",
+        });
+      }
       return false;
     }
     
     setIsAnalyzing(true);
     
-    // Analyze every 3 seconds to balance accuracy with performance
-    intervalRef.current = window.setInterval(captureAndAnalyze, 3000);
+    // Analyze every 2 seconds for better performance with TensorFlow.js
+    intervalRef.current = window.setInterval(captureAndAnalyze, 2000);
     
     return true;
   };
@@ -148,12 +164,12 @@ export const useEnhancedFaceAnalysis = (isActive: boolean) => {
 
   // Handle active state changes
   useEffect(() => {
-    if (isActive && isPermissionGranted && !isAnalyzing) {
+    if (isActive && isPermissionGranted && !isAnalyzing && isModelLoaded) {
       startAnalyzing();
     } else if (!isActive && isAnalyzing) {
       stopAnalyzing();
     }
-  }, [isActive, isPermissionGranted]);
+  }, [isActive, isPermissionGranted, isModelLoaded]);
 
   // Cleanup
   useEffect(() => {
@@ -176,6 +192,7 @@ export const useEnhancedFaceAnalysis = (isActive: boolean) => {
     startAnalyzing,
     stopAnalyzing,
     error,
-    isProcessing
+    isProcessing,
+    isModelLoaded
   };
 };
