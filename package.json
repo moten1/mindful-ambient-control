@@ -43,8 +43,9 @@
     "@radix-ui/react-tooltip": "^1.1.4",
     "@supabase/supabase-js": "^2.49.8",
     "@tanstack/react-query": "^5.56.2",
-    "@tensorflow-models/speech-commands": "^0.5.4",
-    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow-models/face-landmarks-detection": "^1.0.0",
+    "@tensorflow-models/speech-commands": "^0.6.2",
+    "@tensorflow/tfjs": "^4.13.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -85,16 +86,4 @@
     "typescript-eslint": "^8.0.1",
     "vite": "^5.4.1"
   }
-}
-"@tensorflow-models/face-landmarks-detection": "^1.0.0",
-"@tensorflow-models/speech-commands": "^0.6.2",
-"@tensorflow/tfjs": "^4.13.0",
-"dependencies": {
-  "react": "^18.2.0",
-  "react-dom": "^18.2.0",
-  ...
-},
-"devDependencies": {
-  "esbuild-loader": "...",
-  ...
 }
