@@ -89,3 +89,12 @@
 "@tensorflow-models/face-landmarks-detection": "^1.0.0",
 "@tensorflow-models/speech-commands": "^0.6.2",
 "@tensorflow/tfjs": "^4.13.0",
+"dependencies": {
+  "react": "^18.2.0",
+  "react-dom": "^18.2.0",
+  ...
+},
+"devDependencies": {
+  "esbuild-loader": "...",
+  ...
+}
