@@ -1,4 +1,3 @@
-
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -23,5 +22,8 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      external: ['react', 'react-dom'],
+    },
   }
 }));
